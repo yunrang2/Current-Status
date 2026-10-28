@@ -1,0 +1,27 @@
+name: 진짜 고깃집 예약 사전 알림
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: realmeat-reminder-tick
+  cancel-in-progress: false
+jobs:
+  reservation-tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: 카카오톡 예약 알림 실행
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${ACTIONS_ID_TOKEN_REQUEST_URL:?GitHub OIDC unavailable}"
+          : "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:?GitHub OIDC unavailable}"
+          AUDIENCE="realmeat-automatic-reservation-reminders"
+          OIDC_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUDIENCE}"
+          TOKEN="$(curl -fsS --retry 2 --max-time 20 -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${OIDC_URL}" | jq -r .value)"
+          test -n "${TOKEN}"
+          curl -fsS --retry 2 --max-time 50 -H "Authorization: Bearer ${TOKEN}" "https://realmeat.vercel.app/api/cron/timed" | jq -c '{ok,date,hour,minute,registered,reminders,morning,stats}'

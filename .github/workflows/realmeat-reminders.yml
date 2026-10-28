@@ -1,5 +1,9 @@
 name: 진짜 고깃집 예약 사전 알림
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/realmeat-reminders.yml
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
@@ -24,4 +28,9 @@ jobs:
           OIDC_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUDIENCE}"
           TOKEN="$(curl -fsS --retry 2 --max-time 20 -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${OIDC_URL}" | jq -r .value)"
           test -n "${TOKEN}"
-          curl -fsS --retry 2 --max-time 50 -H "Authorization: Bearer ${TOKEN}" "https://realmeat.vercel.app/api/cron/timed" | jq -c '{ok,date,hour,minute,registered,reminders,morning,stats}'
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            URL="https://realmeat.vercel.app/api/cron/bootstrap"
+          else
+            URL="https://realmeat.vercel.app/api/cron/timed"
+          fi
+          curl -fsS --retry 2 --max-time 50 -H "Authorization: Bearer ${TOKEN}" "$URL" | jq -c '{ok,date,hour,minute,registered,reminders,morning,stats,templates}'
